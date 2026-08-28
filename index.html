@@ -1,1 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Midnight City — A Scroll Story</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Inter:wght@400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#F1EDE4;
+    --ink-dim:#9AA1B4;
+    --pink:#FF3D81;
+    --gold:#FFB347;
+    --font-display:'Bricolage Grotesque', sans-serif;
+    --font-body:'Inter', sans-serif;
+    --font-mono:'JetBrains Mono', monospace;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    background:#0B0E1A;
+    color:var(--ink);
+    font-family:var(--font-body);
+    overflow-x:hidden;
+  }
+  ::selection{background:var(--pink);color:#0B0E1A;}
+
+  /* ---------- Fixed orb that arcs across the whole page as you scroll ---------- */
+  #orb{
+    position:fixed;
+    top:0;left:0;
+    width:14px;height:14px;
+    border-radius:50%;
+    background:radial-gradient(circle at 35% 35%, #fff, var(--gold) 55%, transparent 75%);
+    box-shadow:0 0 20px 6px var(--gold), 0 0 60px 20px rgba(255,179,71,0.25);
+    pointer-events:none;
+    z-index:5;
+    will-change:transform, filter;
+    transition:filter 0.4s ease;
+  }
+
+  /* ---------- Timestamp label, shared across chapters ---------- */
+  .timestamp{
+    font-family:var(--font-mono);
+    font-size:0.8rem;
+    letter-spacing:0.18em;
+    text-transform:uppercase;
+    color:var(--ink-dim);
+    display:flex;
+    align-items:center;
+    gap:0.6rem;
+  }
+  .timestamp::before{
+    content:'';
+    width:6px;height:6px;
+    border-radius:50%;
+    background:var(--gold);
+    box-shadow:0 0 8px 2px var(--gold);
+  }
+
+  section, header, footer{
+    position:relative;
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    padding:8vh 8vw;
+    overflow:hidden;
+  }
+
+  /* ---------- Hero ---------- */
+  .hero{
+    background:radial-gradient(ellipse at 50% 20%, #1a2038 0%, #0B0E1A 65%);
+    align-items:flex-start;
+  }
+  .hero .timestamp{margin-bottom:2rem;}
+  .hero h1{
+    font-family:var(--font-display);
+    font-weight:800;
+    font-size:clamp(3rem, 9vw, 6.5rem);
+    line-height:0.95;
+    letter-spacing:-0.02em;
+  }
+  .hero h1 span{
+    display:block;
+    background:linear-gradient(90deg, var(--pink), var(--gold));
+    -webkit-background-clip:text;
+    background-clip:text;
+    color:transparent;
+  }
+  .hero p{
+    margin-top:1.6rem;
+    max-width:34ch;
+    font-size:1.05rem;
+    color:var(--ink-dim);
+    line-height:1.7;
+  }
+  .scroll-cue{
+    position:absolute;
+    bottom:6vh; left:8vw;
+    font-family:var(--font-mono);
+    font-size:0.72rem;
+    letter-spacing:0.15em;
+    color:var(--ink-dim);
+    text-transform:uppercase;
+    display:flex; align-items:center; gap:0.5rem;
+  }
+  .scroll-cue::after{
+    content:'↓';
+    animation:bob 1.8s ease-in-out infinite;
+  }
+  @keyframes bob{0%,100%{transform:translateY(0);}50%{transform:translateY(6px);}}
+
+  /* ---------- Chapters ---------- */
+  .chapter{justify-content:center;}
+  .chapter .inner{max-width:44ch;}
+  .chapter .label{
+    font-family:var(--font-display);
+    font-weight:600;
+    font-size:clamp(2rem, 5.5vw, 3.6rem);
+    margin:0.6rem 0 1.1rem;
+    letter-spacing:-0.01em;
+  }
+  .chapter p{
+    font-size:1.02rem;
+    line-height:1.75;
+    color:rgba(241,237,228,0.82);
+  }
+
+  .dusk{background:linear-gradient(180deg, #241134 0%, #4a1f3d 45%, #a1512f 100%);}
+  .midnight{background:linear-gradient(180deg, #05060D 0%, #0B0F22 100%);}
+  .deep{background:linear-gradient(180deg, #060810 0%, #0C0F1E 100%); justify-content:center; align-items:center; text-align:center;}
+  .deep .inner{max-width:38ch;}
+  .dawn{background:linear-gradient(180deg, #1b1330 0%, #7a3a55 45%, #ffb98f 100%);}
+
+  /* ---------- Skyline (dusk / midnight / dawn) ---------- */
+  .skyline{
+    position:absolute;
+    bottom:0; left:0; right:0;
+    height:36vh;
+    display:flex;
+    align-items:flex-end;
+    justify-content:center;
+    gap:clamp(3px,0.6vw,8px);
+    pointer-events:none;
+  }
+  .building{
+    position:relative;
+    width:clamp(20px,4vw,46px);
+    background:#0B0E1A;
+    opacity:0.92;
+  }
+  .window{
+    position:absolute;
+    width:14%;
+    aspect-ratio:1/1.3;
+    background:rgba(255,179,71,0.06);
+    transition:background 0.6s ease, box-shadow 0.6s ease;
+  }
+  .skyline.on .window.lit{
+    background:var(--gold);
+    box-shadow:0 0 6px 1px rgba(255,179,71,0.6);
+  }
+  .dawn .skyline.on .window.lit{
+    background:rgba(255,179,71,0.35);
+    box-shadow:none;
+  }
+
+  /* ---------- Rain (midnight only) ---------- */
+  .rain{position:absolute; inset:0; pointer-events:none; opacity:0;}
+  .midnight.in-view .rain{opacity:1; transition:opacity 1.2s ease;}
+  .rain-drop{
+    position:absolute; top:-10%;
+    width:1px; height:60px;
+    background:linear-gradient(180deg, transparent, rgba(255,61,129,0.35));
+    animation:fall linear infinite;
+  }
+  @keyframes fall{to{transform:translateY(120vh);}}
+
+  /* ---------- Stars (deep night only) ---------- */
+  .stars{position:absolute; inset:0; pointer-events:none;}
+  .star{
+    position:absolute;
+    width:2px; height:2px;
+    border-radius:50%;
+    background:#F1EDE4;
+    animation:twinkle 3s ease-in-out infinite;
+  }
+  @keyframes twinkle{0%,100%{opacity:0.15;}50%{opacity:0.9;}}
+
+  /* ---------- Footer ---------- */
+  footer{
+    background:#0B0E1A;
+    align-items:center;
+    text-align:center;
+    min-height:60vh;
+  }
+  footer p{
+    font-family:var(--font-display);
+    font-weight:600;
+    font-size:clamp(1.5rem,3.6vw,2.2rem);
+    max-width:20ch;
+    color:var(--ink);
+  }
+  footer span{
+    display:block;
+    margin-top:1.4rem;
+    font-family:var(--font-mono);
+    font-size:0.75rem;
+    letter-spacing:0.15em;
+    text-transform:uppercase;
+    color:var(--ink-dim);
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    #orb, .scroll-cue::after, .rain-drop, .star{animation:none !important; transition:none !important;}
+    html{scroll-behavior:auto;}
+  }
+</style>
+</head>
+<body>
+
+<div id="orb"></div>
+
+<header class="hero">
+  <p class="timestamp">7:45 PM · The city exhales its daylight</p>
+  <h1>MIDNIGHT<span>CITY</span></h1>
+  <p>A place doesn't sleep — it just changes what it looks like awake. Scroll through one night, hour by hour, as the light moves from window to window.</p>
+  <div class="scroll-cue">Begin the night</div>
+</header>
+
+<section class="chapter dusk" data-chapter="dusk">
+  <div class="skyline" id="skyline-dusk"></div>
+  <div class="inner">
+    <p class="timestamp">9:00 PM</p>
+    <h2 class="label">Dusk</h2>
+    <p>The sky burns out slow, orange folding into violet. One by one, office windows go dark and kitchen windows go gold. Somewhere below, a kettle starts, a bus sighs at a corner, the day changes shift with the night.</p>
+  </div>
+</section>
+
+<section class="chapter midnight" data-chapter="midnight">
+  <div class="rain" id="rain"></div>
+  <div class="skyline" id="skyline-midnight"></div>
+  <div class="inner">
+    <p class="timestamp">12:00 AM</p>
+    <h2 class="label">Midnight</h2>
+    <p>Rain finds the neon and multiplies it — every sign doubled in the wet street. The city is loudest here, all at once: a late train, a closing shutter, someone's laugh carried two blocks by the wind.</p>
+  </div>
+</section>
+
+<section class="chapter deep" data-chapter="deep">
+  <div class="stars" id="stars"></div>
+  <div class="inner">
+    <p class="timestamp">3:00 AM</p>
+    <h2 class="label">Deep Night</h2>
+    <p>This is the hour with no one in it. Streets empty enough to hear your own steps. Even the neon seems to dim out of respect. Just the sky, doing the one thing it does without an audience.</p>
+  </div>
+</section>
+
+<section class="chapter dawn" data-chapter="dawn">
+  <div class="skyline" id="skyline-dawn"></div>
+  <div class="inner">
+    <p class="timestamp">6:00 AM</p>
+    <h2 class="label">Dawn</h2>
+    <p>Windows go dark not because the city is done, but because it doesn't need the light anymore. The horizon takes over the job. Somewhere, someone is already awake, watching the gold come back on its own.</p>
+  </div>
+</section>
+
+<footer>
+  <p>The city never really sleeps.<br>It just changes its light.</p>
+  <span>Scroll story · built with HTML, CSS &amp; a little JS</span>
+</footer>
+
+<script>
+  // ---------- Skyline generator ----------
+  function buildSkyline(id, buildingCount){
+    const el = document.getElementById(id);
+    if(!el) return;
+    for(let b=0;b<buildingCount;b++){
+      const building = document.createElement('div');
+      building.className = 'building';
+      const h = 30 + Math.random()*70;
+      building.style.height = h + '%';
+      const cols = 3;
+      const rows = Math.floor(h/9);
+      for(let r=0;r<rows;r++){
+        for(let c=0;c<cols;c++){
+          const win = document.createElement('div');
+          win.className = 'window';
+          if(Math.random() < 0.55) win.classList.add('lit');
+          win.style.left = (c*30+8) + '%';
+          win.style.bottom = (r*16+4) + '%';
+          win.style.transitionDelay = (Math.random()*1.2).toFixed(2) + 's';
+          building.appendChild(win);
+        }
+      }
+      el.appendChild(building);
+    }
+  }
+  buildSkyline('skyline-dusk', 14);
+  buildSkyline('skyline-midnight', 14);
+  buildSkyline('skyline-dawn', 14);
+
+  // ---------- Rain generator ----------
+  const rain = document.getElementById('rain');
+  for(let i=0;i<50;i++){
+    const drop = document.createElement('div');
+    drop.className = 'rain-drop';
+    drop.style.left = Math.random()*100 + '%';
+    drop.style.animationDuration = (0.6 + Math.random()*0.8) + 's';
+    drop.style.animationDelay = (Math.random()*2) + 's';
+    rain.appendChild(drop);
+  }
+
+  // ---------- Star generator ----------
+  const stars = document.getElementById('stars');
+  for(let i=0;i<90;i++){
+    const star = document.createElement('div');
+    star.className = 'star';
+    star.style.left = Math.random()*100 + '%';
+    star.style.top = Math.random()*100 + '%';
+    star.style.animationDelay = (Math.random()*3) + 's';
+    stars.appendChild(star);
+  }
+
+  // ---------- Light up skylines / reveal rain when chapter enters view ----------
+  const observer = new IntersectionObserver((entries)=>{
+    entries.forEach(entry=>{
+      const skyline = entry.target.querySelector('.skyline');
+      if(entry.isIntersecting){
+        entry.target.classList.add('in-view');
+        if(skyline) skyline.classList.add('on');
+      }
+    });
+  }, {threshold:0.35});
+  document.querySelectorAll('.chapter').forEach(ch=>observer.observe(ch));
+
+  // ---------- Orb arcs across the page based on scroll progress ----------
+  const orb = document.getElementById('orb');
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function updateOrb(){
+    const scrollTop = window.scrollY;
+    const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+    const progress = Math.min(Math.max(scrollTop / docHeight, 0), 1);
+
+    const x = progress * (window.innerWidth - 14);
+    const arc = Math.sin(progress * Math.PI); // 0 -> 1 -> 0
+    const y = (window.innerHeight * 0.12) + (1 - arc) * (window.innerHeight * 0.55);
+
+    orb.style.transform = `translate(${x}px, ${y}px)`;
+    orb.style.filter = `hue-rotate(${progress * -40}deg) saturate(${1 + progress*0.3})`;
+  }
+
+  if(!reduceMotion){
+    let ticking = false;
+    window.addEventListener('scroll', ()=>{
+      if(!ticking){
+        requestAnimationFrame(()=>{ updateOrb(); ticking = false; });
+        ticking = true;
+      }
+    });
+    window.addEventListener('resize', updateOrb);
+    updateOrb();
+  } else {
+    orb.style.display = 'none';
+  }
+</script>
+
+</body>
+</html>
 
